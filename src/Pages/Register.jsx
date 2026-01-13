@@ -34,7 +34,7 @@ const Register = () => {
     try {
       const normalizedPhone = formData.phone.replace(/\D/g, "");
       const res = await axios.post(
-        "http://localhost:5000/api/users/send-otp",
+        "https://payment-project-p4z6.onrender.com/api/users/send-otp",
         { phone: normalizedPhone }
       );
       setOtpSent(true);
@@ -47,7 +47,7 @@ const Register = () => {
   const handleVerifyOTP = async () => {
     try {
       const normalizedPhone = formData.phone.replace(/\D/g, "");
-      const res = await axios.post("http://localhost:5000/api/users/verify-otp", {
+      const res = await axios.post("https://payment-project-p4z6.onrender.com/api/users/verify-otp", {
         phone: normalizedPhone,
         otp,
       });
@@ -72,7 +72,7 @@ const Register = () => {
 
     setLoading(true);
     try {
-      const res = await axios.post("http://localhost:5000/api/users/register", {
+      const res = await axios.post("https://payment-project-p4z6.onrender.com/api/users/register", {
         username: formData.fullName,
         email: formData.email,
         phone: formData.phone.replace(/\D/g, ""),
