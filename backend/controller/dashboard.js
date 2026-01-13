@@ -28,7 +28,7 @@ export const getDashboardSummary = async (req, res) => {
       .limit(2);
 
     const recentTransactions = recentTxRaw.map((tx) => {
-      const isSent = tx.sender.toString() === userId.toString();
+      const isSent = tx.sender && tx.sender .toString() === userId.toString();
 
       return {
         _id: tx._id,
