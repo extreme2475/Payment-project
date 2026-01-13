@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 
 import Sidebar from "./components/Sidebar/Sidebar.jsx";
+import Navbar from "./components/Navabar/Navbar.jsx"; // Navbar Import kiya
 import Login from "./Pages/login.jsx";
 import Register from "./Pages/Register.jsx";
 import PaymentForm from "./Pages/Payment.jsx";
@@ -15,6 +16,7 @@ import SchedulePaymentForm from "./Pages/SchedulePaymentForm.jsx";
 import ChatPage from "./Pages/Chat.jsx";
 import Transactions from "./Pages/Transaction.jsx";
 import Help from "./Pages/Help.jsx";
+import Show from "./Pages/Show.jsx";
 
 const pageVariants = {
   initial: { opacity: 0, x: 20 },
@@ -42,7 +44,7 @@ const PageWrapper = ({ children }) => (
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
-  if (!token) return <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/show" replace />;
   return children;
 };
 
@@ -52,7 +54,7 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
 
-  const authPaths = ["/login", "/register"];
+  const authPaths = ["/login", "/register", "/show"];
   const isAuthPage = authPaths.includes(location.pathname);
 
   useEffect(() => {
@@ -65,6 +67,7 @@ function App() {
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
       
+      {/* 1. Sidebar: Only for Desktop (md and up) */}
       {isAuthenticated && !isAuthPage && (
         <Sidebar
           collapsed={sidebarCollapsed}
@@ -72,17 +75,25 @@ function App() {
         />
       )}
 
-      {/* Updated dynamic margin to handle the Fixed Sidebar */}
+      {/* Main Content Wrapper */}
       <div className={`flex-1 flex flex-col min-w-0 h-full overflow-y-auto transition-all duration-500 
         ${isAuthenticated && !isAuthPage ? (sidebarCollapsed ? "md:ml-24" : "md:ml-72") : "ml-0"}`}>
         
-        <main className={`${isAuthenticated && !isAuthPage ? "p-4 md:p-8" : "p-0"}`}>
+        {/* 2. Navbar: Mobile pe dikhega (md:hidden) and baki pages pe (except login/register) */}
+        {isAuthenticated && !isAuthPage && (
+          <Navbar />
+        )}
+
+        {/* 3. Main content padding adjustment */}
+        <main className={`
+          ${isAuthenticated && !isAuthPage ? "p-4 md:p-8 pt-24 md:pt-8" : "p-0"}
+        `}>
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
               <Route
                 path="/"
                 element={
-                  isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/register" replace />
+                  isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/show" replace />
                 }
               />
               
@@ -91,6 +102,7 @@ function App() {
                 element={<PageWrapper><Login setIsAuthenticated={setIsAuthenticated} setUser={setUser} /></PageWrapper>}
               />
               <Route path="/register" element={<PageWrapper><Register /></PageWrapper>} />
+              <Route path="/show" element={<PageWrapper><Show /></PageWrapper>} />
 
               <Route path="/dashboard" element={<ProtectedRoute><PageWrapper><Dashboard /></PageWrapper></ProtectedRoute>} />
               <Route path="/wallet" element={<ProtectedRoute><PageWrapper><PaymentForm /></PageWrapper></ProtectedRoute>} />

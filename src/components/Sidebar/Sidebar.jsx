@@ -1,13 +1,14 @@
 import React, { useEffect } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   FaHome, FaWallet, FaChartLine, FaCommentDots, FaHandHoldingUsd,
   FaTable, FaShieldAlt, FaCalendarAlt, FaMoneyBill, FaQuestionCircle, 
-  FaAngleLeft, FaAngleRight
+  FaAngleLeft, FaAngleRight, FaSignOutAlt
 } from "react-icons/fa";
 
 const Sidebar = ({ collapsed, setCollapsed }) => {
-  
+  const navigate = useNavigate();
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 1024) {
@@ -20,6 +21,14 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [setCollapsed]);
+
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to logout?")) {
+      localStorage.removeItem("token");
+      navigate("/show");
+      window.location.reload();
+    }
+  };
 
   const menuSections = [
     {
@@ -53,7 +62,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     <aside
       className={`bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] min-h-screen flex flex-col transition-all duration-500 ease-in-out border-r border-gray-100
         ${collapsed ? "w-24" : "w-72"} 
-        hidden md:flex fixed top-0 left-0 h-screen z-[140]`} // Changed to FIXED and set z-index below Navbar
+        hidden md:flex fixed top-0 left-0 h-screen z-[140]`}
     >
       <div className="flex items-center justify-between h-20 px-6 shrink-0">
         {!collapsed ? (
@@ -80,7 +89,6 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
                 {section.label}
               </p>
             )}
-            
             {section.items.map((item) => (
               <NavLink
                 key={item.name}
@@ -96,28 +104,24 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
                 <span className={`text-xl shrink-0 transition-transform duration-300 group-hover:scale-110`}>
                   {item.icon}
                 </span>
-                
-                {!collapsed && (
-                  <span className="ml-4 font-bold text-sm whitespace-nowrap tracking-tight">
-                    {item.name}
-                  </span>
-                )}
-
+                {!collapsed && <span className="ml-4 font-bold text-sm whitespace-nowrap tracking-tight">{item.name}</span>}
                 <div className="absolute left-0 w-1 h-6 bg-indigo-600 rounded-r-full scale-y-0 group-[.active-nav]:scale-y-100 transition-transform duration-300" />
-                
-                {collapsed && (
-                  <div className="absolute left-full ml-6 px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:translate-x-[-10px] transition-all z-[100] shadow-xl">
-                    {item.name}
-                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-gray-900 rotate-45" />
-                  </div>
-                )}
               </NavLink>
             ))}
           </div>
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-50">
+      {/* Logout & Collapse Section at bottom */}
+      <div className="p-4 border-t border-gray-50 space-y-2">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center px-4 py-3 rounded-2xl text-red-500 hover:bg-red-50 transition-all font-bold text-sm group"
+        >
+          <FaSignOutAlt className="text-xl shrink-0 group-hover:scale-110 transition-transform" />
+          {!collapsed && <span className="ml-4">Logout</span>}
+        </button>
+
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="w-full flex items-center justify-center p-3 rounded-2xl bg-gray-50 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all group"
