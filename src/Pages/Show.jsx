@@ -8,6 +8,7 @@ import Founder from '../components/Intro/Founder.jsx';
 import FeaturesGalaxy from '../components/Intro/FeaturesGalaxy.jsx';
 import TrustPillar from '../components/Intro/TrustPillar.jsx';
 import Footer from '../components/Intro/Footer.jsx';
+import ProjectSnapshots from '../components/Intro/Snapshot.jsx';
 
 const Show = () => {
   return (
@@ -31,6 +32,10 @@ const Show = () => {
           >
             <Founder />
           </motion.div>
+        </section>
+
+        <section className="py-10">
+           <ProjectSnapshots />
         </section>
 
         {/* 4. Features - Interactive Galaxy Grid */}

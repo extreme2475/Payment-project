@@ -6,9 +6,9 @@ const TrustPillar = () => {
     <div className="max-w-7xl mx-auto px-6 py-20 text-center border-y border-white/5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
         {[
-          { label: "Active Users", value: "10K+" },
+          { label: "Active Users", value: "100+" },
           { label: "Security Level", value: "BANK-L" },
-          { label: "Transactions", value: "1M+" },
+          { label: "Transactions", value: "1k+" },
           { label: "Uptime", value: "99.9%" },
         ].map((stat, i) => (
           <motion.div 

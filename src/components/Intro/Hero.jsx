@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+// Link import kiya hai agar aap React Router use kar rahe hain
+import { Link } from 'react-router-dom'; 
+
 import gggg from '../../assets/gggg.png';
 import humm from '../../assets/humm.png';
 import oooo from '../../assets/oooo.png';
@@ -40,12 +43,19 @@ const Hero = () => {
           Experience the most aesthetic and secure way to manage your payments, analytics, and loans in one place.
         </motion.p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-          <button className="bg-white text-black px-8 py-4 rounded-2xl font-bold text-lg hover:bg-blue-400 transition-all duration-300">
-            Get Started Free
-          </button>
-          <button className="border border-gray-700 px-8 py-4 rounded-2xl font-bold text-lg hover:bg-white/5 transition">
-            Watch Demo
-          </button>
+          {/* Linked to Register Page */}
+          <Link to="/register" className="w-full sm:w-auto">
+            <button className="w-full bg-white text-black px-8 py-4 rounded-2xl font-bold text-lg hover:bg-blue-400 transition-all duration-300">
+              Get Started Free
+            </button>
+          </Link>
+
+          {/* Linked to Snapshot Section (id="snapshots") */}
+          <a href="#snapshots" className="w-full sm:w-auto">
+            <button className="w-full border border-gray-700 px-8 py-4 rounded-2xl font-bold text-lg hover:bg-white/5 transition">
+              Watch Demo
+            </button>
+          </a>
         </div>
       </div>
 
