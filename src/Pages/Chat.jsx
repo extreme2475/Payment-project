@@ -10,8 +10,6 @@ const ChatPage = ({ currentUser }) => {
   const [messages, setMessages] = useState([]);
   const [unreadMap, setUnreadMap] = useState({});
   const [socket, setSocket] = useState(null);
-
-  // Responsive state to handle mobile view toggle
   const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
@@ -81,7 +79,6 @@ const ChatPage = ({ currentUser }) => {
           delete copy[selectedContact._id];
           return copy;
         });
-        // Mobile: Show chat window when a contact is selected
         setShowChat(true);
       } catch (err) {
         console.error("Error loading chat history:", err);
@@ -101,13 +98,9 @@ const ChatPage = ({ currentUser }) => {
 
   return (
     <div className="h-screen bg-[#F8FAFC] flex items-center justify-center p-0 md:p-8 lg:p-12">
-      {/* Container: Full width on mobile, max-width on desktop */}
       <div className="flex h-full w-full max-w-7xl bg-white shadow-2xl md:rounded-[3rem] overflow-hidden border border-slate-100">
         
-        {/* CONTACT LIST: 
-            Mobile: Hide if chat is active.
-            Desktop: Always show (w-1/3 or fixed width). 
-        */}
+        {/* Contact List */}
         <div className={`${showChat ? 'hidden' : 'flex'} md:flex w-full md:w-80 lg:w-96 border-r border-slate-100`}>
           <ContactList
             contacts={contacts}
@@ -117,10 +110,7 @@ const ChatPage = ({ currentUser }) => {
           />
         </div>
 
-        {/* CHAT WINDOW: 
-            Mobile: Hide if no contact selected or showChat is false.
-            Desktop: Always show flex-1.
-        */}
+        {/* Chat Window */}
         <div className={`${!showChat ? 'hidden' : 'flex'} md:flex flex-1`}>
           {selectedContact ? (
             <ChatWindow
@@ -130,7 +120,6 @@ const ChatPage = ({ currentUser }) => {
               setMessages={setMessages}
               socket={socket}
               setUnreadMap={setUnreadMap}
-              // Back Button for Mobile
               onBack={() => setShowChat(false)} 
             />
           ) : (

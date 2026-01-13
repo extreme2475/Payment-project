@@ -26,14 +26,19 @@ const port = process.env.PORT || 5000;
 const httpServer = createServer(app); 
 const io = new Server(httpServer, {
   cors: {
-    origin: "*", 
-    methods: ["GET", "POST"]
-  }
+    origin: ["https://payment-project-sigma.vercel.app"],
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
 });
 
 connectDB();
 
-app.use(cors());
+app.use(cors({
+  origin: "https://payment-project-sigma.vercel.app",
+  credentials: true
+}));
 app.use(express.json());
 
 let onlineUsers = new Map(); 
