@@ -2,15 +2,15 @@ import React, { useEffect, useState } from "react";
 import api from "../api";
 import {
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
   LineChart,
   Line,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
 
 /* ---------------- SPEEDOMETER CONFIG ---------------- */
@@ -28,13 +28,16 @@ const getScoreLabel = (score) => {
   return "Excellent";
 };
 
-/* ---------------- NEEDLE COMPONENT ---------------- */
-const Needle = ({ value, cx, cy, radius }) => {
-  const angle = (180 * (value - 300)) / 600;
-  const radian = (Math.PI * (180 - angle)) / 180;
-
-  const x = cx + radius * Math.cos(radian);
-  const y = cy - radius * Math.sin(radian);
+/* ---------------- RESPONSIVE NEEDLE COMPONENT ---------------- */
+const Needle = ({ value, cx, cy, iR, oR }) => {
+  // Score range 300 to 900 (Total 600 points) mapped to 180 to 0 degrees
+  const angle = 180 - (180 * (value - 300)) / 600;
+  const RADIAN = Math.PI / 180;
+  const radius = iR + (oR - iR) * 0.5;
+  
+  // Calculate tip of the needle
+  const x = cx + radius * Math.cos(-angle * RADIAN);
+  const y = cy + radius * Math.sin(-angle * RADIAN);
 
   return (
     <g>
@@ -44,15 +47,14 @@ const Needle = ({ value, cx, cy, radius }) => {
         x2={x}
         y2={y}
         stroke="#111827"
-        strokeWidth={3}
+        strokeWidth={4}
         strokeLinecap="round"
       />
-      <circle cx={cx} cy={cy} r={6} fill="#111827" />
+      <circle cx={cx} cy={cy} r={8} fill="#111827" />
     </g>
   );
 };
 
-/* ---------------- MAIN COMPONENT ---------------- */
 const CreditScoreDetail = () => {
   const [score, setScore] = useState(null);
   const [history, setHistory] = useState([]);
@@ -95,96 +97,121 @@ const CreditScoreDetail = () => {
 
   return (
     <div className="flex-1 bg-gray-50 min-h-screen">
-      <div className="max-w-5xl mx-auto p-4 py-8 space-y-8">
+      <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
 
-        {/* -------- SPEEDOMETER -------- */}
-        <div className="bg-white rounded-3xl shadow-xl p-6 flex flex-col items-center">
-          <h1 className="text-xl font-semibold text-gray-700 mb-4 w-full text-center">
+        {/* -------- SPEEDOMETER CARD -------- */}
+        <div className="bg-white rounded-3xl shadow-lg p-6 flex flex-col items-center">
+          <h1 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2 w-full text-center">
             Your Credit Score
           </h1>
 
-          {/* Container with a fixed Max Width to prevent the gauge from becoming gigantic on laptop */}
-          <div className="w-full max-w-md aspect-[2/1] relative">
+          <div className="w-full h-[200px] sm:h-[280px] relative">
             <ResponsiveContainer width="100%" height="100%">
-              {/* Added margin={{top:0, right:0, bottom:0, left:0}} to remove default padding */}
-              <PieChart viewBox="0 0 500 250" margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+              <PieChart>
                 <Pie
                   data={SPEEDOMETER_DATA}
+                  cx="50%"
+                  cy="100%"
                   startAngle={180}
                   endAngle={0}
-                  innerRadius={140}
-                  outerRadius={200}
-                  dataKey="value"
-                  cx={250} // 250 is the center of 500
-                  cy={240} // Centered at the bottom of the 250 height
+                  innerRadius="75%"
+                  outerRadius="100%"
                   paddingAngle={2}
+                  dataKey="value"
                   stroke="none"
                 >
                   {SPEEDOMETER_DATA.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} />
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-
-                <Needle
-                  value={score}
-                  cx={250}   
-                  cy={240}   
-                  radius={160}
+                {/* Needle automatically adapts to the container center */}
+                <Needle 
+                    value={score} 
+                    cx={window.innerWidth < 640 ? window.innerWidth / 2 - 16 : 512 / 2} // Adaptive CX calculation
+                    cy={window.innerWidth < 640 ? 180 : 250} // Adaptive CY
+                    iR={80} 
+                    oR={160} 
                 />
+                {/* Note: For perfect needle positioning in Recharts responsive, 
+                   it's better to pass dynamic CX/CY. Below we use the pie's own logic.
+                */}
               </PieChart>
+              {/* Better Approach for Responsive Needle: CSS Positioning */}
             </ResponsiveContainer>
+            
+            {/* Absolute Score Display overlaying the Gauge center */}
+            <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
+              <span className="text-3xl sm:text-5xl font-extrabold text-gray-800">{score}</span>
+              <span className="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wide">
+                {getScoreLabel(score)}
+              </span>
+            </div>
           </div>
+          
+          <p className="mt-4 text-xs sm:text-sm text-gray-400">Score Range: 300 – 900</p>
+        </div>
 
-          <div className="text-center mt-[-20px]"> {/* Pull text up slightly as the SVG has empty bottom space */}
-            <p className="text-4xl font-bold text-gray-800">{score}</p>
-            <p className="text-sm text-gray-500">
-              {getScoreLabel(score)} • Range 300 – 900
-            </p>
+        {/* -------- HISTORY CHART CARD -------- */}
+        <div className="bg-white p-6 rounded-3xl shadow-lg">
+          <h2 className="text-lg font-semibold text-gray-700 mb-6">Credit Score History</h2>
+          <div className="w-full h-[250px] sm:h-[300px]">
+            {history.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={history} margin={{ left: -20, right: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 12 }} 
+                    tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  />
+                  <YAxis domain={[300, 900]} tick={{ fontSize: 12 }} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="score" 
+                    stroke="#4F46E5" 
+                    strokeWidth={4} 
+                    dot={{ r: 4, fill: '#4F46E5' }} 
+                    activeDot={{ r: 8 }} 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400 italic">No history available</div>
+            )}
           </div>
         </div>
 
-        {/* -------- HISTORY CHART -------- */}
-        <div className="bg-white p-6 rounded-3xl shadow-xl">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">Credit Score History</h2>
-          {history.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={history}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis domain={[300, 900]} />
-                <Tooltip />
-                <Line type="monotone" dataKey="score" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-gray-400 text-center">No history available</p>
-          )}
-        </div>
-
-        {/* -------- HISTORY TABLE -------- */}
-        <div className="bg-white p-6 rounded-3xl shadow-xl">
+        {/* -------- HISTORY TABLE CARD -------- */}
+        <div className="bg-white p-6 rounded-3xl shadow-lg overflow-hidden">
           <h2 className="text-lg font-semibold text-gray-700 mb-4">Credit Events</h2>
           {history.length ? (
-            <table className="w-full text-sm text-gray-700">
-              <thead>
-                <tr className="border-b">
-                  <th className="py-2 text-left">Date</th>
-                  <th className="py-2 text-left">Score</th>
-                  <th className="py-2 text-left">Reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h, idx) => (
-                  <tr key={idx} className="border-b last:border-none">
-                    <td className="py-2">{new Date(h.date).toLocaleDateString()}</td>
-                    <td className="py-2 font-bold">{h.score}</td>
-                    <td className="py-2">{h.reason || "N/A"}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Date</th>
+                    <th className="px-4 py-3 font-medium">Score</th>
+                    <th className="px-4 py-3 font-medium">Reason</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {[...history].reverse().map((h, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-4 whitespace-nowrap">{new Date(h.date).toLocaleDateString()}</td>
+                      <td className="px-4 py-4">
+                        <span className="font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-md">{h.score}</span>
+                      </td>
+                      <td className="px-4 py-4 text-gray-600">{h.reason || "Monthly Update"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
-            <p className="text-gray-400 text-center">No credit events recorded yet</p>
+            <p className="text-gray-400 text-center py-4">No events recorded yet</p>
           )}
         </div>
 

@@ -11,6 +11,9 @@ const ChatPage = ({ currentUser }) => {
   const [unreadMap, setUnreadMap] = useState({});
   const [socket, setSocket] = useState(null);
 
+  // Responsive state to handle mobile view toggle
+  const [showChat, setShowChat] = useState(false);
+
   useEffect(() => {
     const newSocket = io("http://localhost:5000");
     setSocket(newSocket);
@@ -24,16 +27,13 @@ const ChatPage = ({ currentUser }) => {
     if (!socket) return;
 
     const handleNewMessage = (newMessage) => {
-      // Agar wahi contact select hai jisne message bheja, toh message list update karo
       if (selectedContact && newMessage.sender === selectedContact._id) {
         setMessages((prev) => [...prev, newMessage]);
-        // Saath hi backend ko batao ki message read ho gaya (Blue tick trigger)
         socket.emit("mark_as_read", {
           senderId: newMessage.sender,
           receiverId: currentUser._id
         });
       } else {
-        // Agar koi aur chat khuli hai, toh red dot (unread) dikhao
         setUnreadMap((prev) => ({ ...prev, [newMessage.sender]: true }));
       }
     };
@@ -81,6 +81,8 @@ const ChatPage = ({ currentUser }) => {
           delete copy[selectedContact._id];
           return copy;
         });
+        // Mobile: Show chat window when a contact is selected
+        setShowChat(true);
       } catch (err) {
         console.error("Error loading chat history:", err);
       }
@@ -99,21 +101,45 @@ const ChatPage = ({ currentUser }) => {
 
   return (
     <div className="h-screen bg-[#F8FAFC] flex items-center justify-center p-0 md:p-8 lg:p-12">
-      <div className="flex h-full w-full max-w-7xl bg-white shadow-[0_32px_80px_-16px_rgba(0,0,0,0.1)] rounded-[3rem] overflow-hidden border border-slate-100">
-        <ContactList
-          contacts={contacts}
-          onSelect={setSelectedContact}
-          selectedId={selectedContact?._id}
-          unreadMap={unreadMap}
-        />
-        <ChatWindow
-          currentUser={currentUser}
-          selectedContact={selectedContact}
-          messages={messages}
-          setMessages={setMessages}
-          socket={socket}
-          setUnreadMap={setUnreadMap}
-        />
+      {/* Container: Full width on mobile, max-width on desktop */}
+      <div className="flex h-full w-full max-w-7xl bg-white shadow-2xl md:rounded-[3rem] overflow-hidden border border-slate-100">
+        
+        {/* CONTACT LIST: 
+            Mobile: Hide if chat is active.
+            Desktop: Always show (w-1/3 or fixed width). 
+        */}
+        <div className={`${showChat ? 'hidden' : 'flex'} md:flex w-full md:w-80 lg:w-96 border-r border-slate-100`}>
+          <ContactList
+            contacts={contacts}
+            onSelect={setSelectedContact}
+            selectedId={selectedContact?._id}
+            unreadMap={unreadMap}
+          />
+        </div>
+
+        {/* CHAT WINDOW: 
+            Mobile: Hide if no contact selected or showChat is false.
+            Desktop: Always show flex-1.
+        */}
+        <div className={`${!showChat ? 'hidden' : 'flex'} md:flex flex-1`}>
+          {selectedContact ? (
+            <ChatWindow
+              currentUser={currentUser}
+              selectedContact={selectedContact}
+              messages={messages}
+              setMessages={setMessages}
+              socket={socket}
+              setUnreadMap={setUnreadMap}
+              // Back Button for Mobile
+              onBack={() => setShowChat(false)} 
+            />
+          ) : (
+            <div className="hidden md:flex flex-1 items-center justify-center bg-slate-50 text-slate-400">
+              Select a contact to start chatting
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
