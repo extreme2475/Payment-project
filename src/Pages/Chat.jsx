@@ -13,7 +13,10 @@ const ChatPage = ({ currentUser }) => {
   const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
-    const newSocket = io("http://localhost:5000");
+    const newSocket = io("https://payment-project-p4z6.onrender.com", {
+    transports: ["websocket"], // Ye line Vercel/Render ke liye compulsory hai
+    withCredentials: true
+  });
     setSocket(newSocket);
     if (currentUser?._id) {
       newSocket.emit("register_user", currentUser._id);
