@@ -45,17 +45,24 @@ const ChatPage = ({ currentUser }) => {
   useEffect(() => {
     if (!socket) return;
 
-    const handleNewMessage = (newMessage) => {
-      if (selectedContact && newMessage.sender === selectedContact._id) {
-        setMessages((prev) => [...prev, newMessage]);
-        socket.emit("mark_as_read", {
-          senderId: newMessage.sender,
-          receiverId: currentUser._id
-        });
-      } else {
-        setUnreadMap((prev) => ({ ...prev, [newMessage.sender]: true }));
-      }
-    };
+ // ChatPage.jsx ke andar handleNewMessage function ko aise replace karein:
+
+const handleNewMessage = (newMessage) => {
+  // Agar wahi contact open hai jo message bhej raha hai
+  if (selectedContact && newMessage.sender === selectedContact._id) {
+    setMessages((prev) => [...prev, newMessage]);
+    socket.emit("mark_as_read", {
+      senderId: newMessage.sender,
+      receiverId: currentUser._id
+    });
+  } else {
+    // AGAR CONTACT OPEN NAHI HAI -> TOH DOT DIKHAO
+    setUnreadMap((prev) => ({ 
+      ...prev, 
+      [newMessage.sender]: true 
+    }));
+  }
+};
 
     const handleDeleteMessage = ({ msgId }) => {
       setMessages((prev) => prev.filter((m) => m._id !== msgId));
