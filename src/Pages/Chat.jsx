@@ -29,6 +29,7 @@ const ChatPage = ({ currentUser }) => {
     const fetchUnreadStatus = async () => {
       try {
         const res = await api.get("/chat/unread-counts");
+        console.log("BACKEND UNREAD DATA:", res.data);
         if (res.data.success) {
           setUnreadMap(res.data.unreadMapping);
         }

@@ -9,7 +9,8 @@ import {
 import { verifyToken } from "../Middleware/authMiddleware.js";
 
 const router = express.Router();
-
+// Inside routes/chatRoutes.js
+router.get("/unread-counts", verifyToken, getUnreadCounts);
 // 1. History fetch karne ke liye
 router.get("/history/:otherUserId", verifyToken, getChatHistory);
 
@@ -22,7 +23,6 @@ router.delete("/delete/:messageId", verifyToken, deleteMessage);
 // 4. Poori chat clear karne ke liye
 router.delete("/clear/:otherUserId", verifyToken, clearChat);
 
-// Inside routes/chatRoutes.js
-router.get("/unread-counts", verifyToken, getUnreadCounts);
+
 
 export default router;

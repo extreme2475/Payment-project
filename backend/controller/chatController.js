@@ -87,7 +87,7 @@ export const clearChat = async (req, res) => {
 // Add this to your Chat Controller file
 export const getUnreadCounts = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.id|| req.user.id;
 
     // Find all messages sent to ME that are NOT 'read'
     const unreadMessages = await Message.find({
@@ -98,7 +98,7 @@ export const getUnreadCounts = async (req, res) => {
     // Create a simple map: { senderId: true }
     const unreadMap = {};
     unreadMessages.forEach(msg => {
-      unreadMap[msg.sender] = true;
+      unreadMap[msg.sender.toString()] = true;
     });
 
     res.status(200).json({ success: true, unreadMapping: unreadMap });
