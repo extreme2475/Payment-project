@@ -28,37 +28,17 @@ const getScoreLabel = (score) => {
   return "Excellent";
 };
 
-/* ---------------- RESPONSIVE NEEDLE COMPONENT ---------------- */
-const Needle = ({ value, cx, cy, iR, oR }) => {
-  // Score range 300 to 900 (Total 600 points) mapped to 180 to 0 degrees
-  const angle = 180 - (180 * (value - 300)) / 600;
-  const RADIAN = Math.PI / 180;
-  const radius = iR + (oR - iR) * 0.5;
-  
-  // Calculate tip of the needle
-  const x = cx + radius * Math.cos(-angle * RADIAN);
-  const y = cy + radius * Math.sin(-angle * RADIAN);
-
-  return (
-    <g>
-      <line
-        x1={cx}
-        y1={cy}
-        x2={x}
-        y2={y}
-        stroke="#111827"
-        strokeWidth={4}
-        strokeLinecap="round"
-      />
-      <circle cx={cx} cy={cy} r={8} fill="#111827" />
-    </g>
-  );
-};
-
 const CreditScoreDetail = () => {
   const [score, setScore] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Score mapping: 300 to 900 score translates to -90 to +90 degrees
+  const calculateRotation = (val) => {
+    const clampedVal = Math.min(Math.max(val, 300), 900);
+    const rotation = ((clampedVal - 300) / 600) * 180 - 90;
+    return rotation;
+  };
 
   const fetchScore = async () => {
     try {
@@ -100,12 +80,13 @@ const CreditScoreDetail = () => {
       <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* -------- SPEEDOMETER CARD -------- */}
-        <div className="bg-white rounded-3xl shadow-lg p-6 flex flex-col items-center">
-          <h1 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2 w-full text-center">
+        <div className="bg-white rounded-3xl shadow-lg p-6 flex flex-col items-center relative overflow-hidden">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-700 mb-2 w-full text-center">
             Your Credit Score
           </h1>
 
-          <div className="w-full h-[200px] sm:h-[280px] relative">
+          {/* Wrapper for the Gauge and Needle */}
+          <div className="relative w-full max-w-[450px] aspect-[2/1] mt-4 flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -124,94 +105,100 @@ const CreditScoreDetail = () => {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                {/* Needle automatically adapts to the container center */}
-                <Needle 
-                    value={score} 
-                    cx={window.innerWidth < 640 ? window.innerWidth / 2 - 16 : 512 / 2} // Adaptive CX calculation
-                    cy={window.innerWidth < 640 ? 180 : 250} // Adaptive CY
-                    iR={80} 
-                    oR={160} 
-                />
-                {/* Note: For perfect needle positioning in Recharts responsive, 
-                   it's better to pass dynamic CX/CY. Below we use the pie's own logic.
-                */}
               </PieChart>
-              {/* Better Approach for Responsive Needle: CSS Positioning */}
             </ResponsiveContainer>
-            
-            {/* Absolute Score Display overlaying the Gauge center */}
-            <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
-              <span className="text-3xl sm:text-5xl font-extrabold text-gray-800">{score}</span>
-              <span className="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wide">
+
+            {/* --- CSS NEEDLE: Fixed positioning --- */}
+            <div 
+              className="absolute bottom-0 left-1/2 w-[4px] h-[75%] bg-slate-900 origin-bottom transition-transform duration-1000 ease-in-out rounded-full shadow-sm"
+              style={{ 
+                transform: `translateX(-50%) rotate(${calculateRotation(score)}deg)`,
+                zIndex: 20
+              }}
+            >
+              {/* Needle Base Circle */}
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-8 h-8 bg-slate-900 rounded-full border-4 border-white shadow-md"></div>
+            </div>
+
+            {/* --- SCORE OVERLAY --- */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center pb-2 z-10">
+              <span className="text-4xl sm:text-6xl font-black text-slate-800 block leading-none">
+                {score}
+              </span>
+              <span className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest">
                 {getScoreLabel(score)}
               </span>
             </div>
           </div>
           
-          <p className="mt-4 text-xs sm:text-sm text-gray-400">Score Range: 300 – 900</p>
+          <p className="mt-8 text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">
+            Score Range: 300 – 900
+          </p>
         </div>
 
         {/* -------- HISTORY CHART CARD -------- */}
         <div className="bg-white p-6 rounded-3xl shadow-lg">
-          <h2 className="text-lg font-semibold text-gray-700 mb-6">Credit Score History</h2>
+          <h2 className="text-lg font-bold text-gray-700 mb-6">Credit Score History</h2>
           <div className="w-full h-[250px] sm:h-[300px]">
             {history.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={history} margin={{ left: -20, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
                   <XAxis 
                     dataKey="date" 
-                    tick={{ fontSize: 12 }} 
+                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} 
+                    axisLine={false}
+                    tickLine={false}
                     tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                   />
-                  <YAxis domain={[300, 900]} tick={{ fontSize: 12 }} />
+                  <YAxis domain={[300, 900]} hide />
                   <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}
                   />
                   <Line 
                     type="monotone" 
                     dataKey="score" 
                     stroke="#4F46E5" 
                     strokeWidth={4} 
-                    dot={{ r: 4, fill: '#4F46E5' }} 
+                    dot={{ r: 6, fill: '#4F46E5', strokeWidth: 3, stroke: '#fff' }} 
                     activeDot={{ r: 8 }} 
                   />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 italic">No history available</div>
+              <div className="h-full flex items-center justify-center text-gray-400 italic font-medium">No history available</div>
             )}
           </div>
         </div>
 
         {/* -------- HISTORY TABLE CARD -------- */}
         <div className="bg-white p-6 rounded-3xl shadow-lg overflow-hidden">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">Credit Events</h2>
+          <h2 className="text-lg font-bold text-gray-700 mb-4">Credit Events</h2>
           {history.length ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                <thead className="bg-slate-50 text-slate-400 uppercase text-[10px] font-black tracking-widest">
                   <tr>
-                    <th className="px-4 py-3 font-medium">Date</th>
-                    <th className="px-4 py-3 font-medium">Score</th>
-                    <th className="px-4 py-3 font-medium">Reason</th>
+                    <th className="px-6 py-4">Date</th>
+                    <th className="px-6 py-4">Score</th>
+                    <th className="px-6 py-4">Reason</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-slate-50">
                   {[...history].reverse().map((h, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-4 whitespace-nowrap">{new Date(h.date).toLocaleDateString()}</td>
-                      <td className="px-4 py-4">
-                        <span className="font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-md">{h.score}</span>
+                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 font-bold text-slate-600">{new Date(h.date).toLocaleDateString()}</td>
+                      <td className="px-6 py-4">
+                        <span className="font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-xs">{h.score}</span>
                       </td>
-                      <td className="px-4 py-4 text-gray-600">{h.reason || "Monthly Update"}</td>
+                      <td className="px-6 py-4 text-slate-500 font-medium">{h.reason || "Monthly Update"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <p className="text-gray-400 text-center py-4">No events recorded yet</p>
+            <p className="text-gray-400 text-center py-4 font-medium">No events recorded yet</p>
           )}
         </div>
 
