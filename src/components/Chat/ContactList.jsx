@@ -9,9 +9,9 @@ const ContactList = ({ contacts, onSelect, selectedId, unreadMap }) => {
   );
 
   return (
-    <div className="w-80 md:w-[400px] border-r border-slate-50 flex flex-col bg-white">
-      <div className="p-8 pb-4">
-        <h2 className="text-3xl font-black text-slate-900 tracking-tighter mb-6">Messages</h2>
+    <div className="w-full md:w-[400px] border-r border-slate-50 flex flex-col bg-white h-full">
+      <div className="p-6 md:p-8 pb-4">
+        <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter mb-6">Messages</h2>
         <div className="relative group">
           <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
           <input
@@ -23,41 +23,44 @@ const ContactList = ({ contacts, onSelect, selectedId, unreadMap }) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+      <div className="flex-1 overflow-y-auto px-2 md:px-4 py-4 space-y-2">
         {filteredContacts.map((user) => {
           const isActive = selectedId === user._id;
           return (
             <div
               key={user._id}
               onClick={() => onSelect(user)}
-              className={`flex items-center p-5 rounded-[2rem] cursor-pointer transition-all duration-300 relative group ${
-                isActive ? "bg-slate-900 text-white shadow-2xl shadow-slate-200" : "hover:bg-indigo-50/50 text-slate-600"
+              className={`flex items-center p-3 md:p-5 rounded-[1.5rem] md:rounded-[2.5rem] cursor-pointer transition-all duration-300 relative group ${
+                isActive ? "bg-slate-900 text-white shadow-xl" : "hover:bg-indigo-50/50 text-slate-600"
               }`}
             >
-              <div className="relative">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 transition-transform duration-500 ${
+              {/* Avatar Wrapper */}
+              <div className="relative shrink-0">
+                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center font-black text-lg md:text-xl shrink-0 transition-transform duration-500 ${
                   isActive ? "bg-white/10 text-white scale-90" : "bg-indigo-50 text-indigo-600"
                 }`}>
                   {user.username[0].toUpperCase()}
                 </div>
+
+                {/* Fixed Red Dot for Mobile & Desktop */}
                 {unreadMap?.[user._id] && !isActive && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 border-2 border-white rounded-full animate-pulse shadow-md"></span>
+                  <span className="absolute -top-1 -right-1 z-20 w-4 h-4 bg-rose-500 border-2 border-white rounded-full animate-pulse shadow-md"></span>
                 )}
               </div>
 
-              <div className="ml-5 flex-1 overflow-hidden">
+              <div className="ml-4 md:ml-5 flex-1 overflow-hidden">
                 <div className="flex justify-between items-center mb-1">
                   <span className={`font-black text-sm tracking-tight truncate ${isActive ? "text-white" : "text-slate-900"}`}>
                     {user.username}
                   </span>
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
+                <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-40 truncate">
                   {user.phone}
                 </p>
               </div>
 
               {isActive && (
-                <div className="absolute right-4 w-1 h-8 bg-indigo-500 rounded-full"></div>
+                <div className="absolute right-3 md:right-4 w-1.5 h-6 md:h-8 bg-indigo-500 rounded-full"></div>
               )}
             </div>
           );
