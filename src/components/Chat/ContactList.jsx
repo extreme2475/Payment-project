@@ -42,9 +42,9 @@ const ContactList = ({ contacts, onSelect, selectedId, unreadMap }) => {
                   {user.username[0].toUpperCase()}
                 </div>
 
-                {/* Fixed Red Dot for Mobile & Desktop */}
+                {/* Fixed Red Dot - Enhanced for visibility on Mobile */}
                 {unreadMap?.[user._id] && !isActive && (
-                  <span className="absolute -top-1 -right-1 z-20 w-4 h-4 bg-rose-500 border-2 border-white rounded-full animate-pulse shadow-md"></span>
+                  <span className="absolute -top-1 -right-1 z-30 w-4 h-4 bg-rose-500 border-2 border-white rounded-full animate-pulse shadow-md"></span>
                 )}
               </div>
 

@@ -14,14 +14,32 @@ const ChatPage = ({ currentUser }) => {
 
   useEffect(() => {
     const newSocket = io("https://payment-project-p4z6.onrender.com", {
-    transports: ["websocket"], // Ye line Vercel/Render ke liye compulsory hai
-    withCredentials: true
-  });
+      transports: ["websocket"],
+      withCredentials: true
+    });
     setSocket(newSocket);
     if (currentUser?._id) {
       newSocket.emit("register_user", currentUser._id);
     }
     return () => newSocket.close();
+  }, [currentUser]);
+
+  // NEW: Robust Unread Sync from Database on Load
+  useEffect(() => {
+    const fetchUnreadStatus = async () => {
+      try {
+        const res = await api.get("/chat/unread-counts");
+        if (res.data.success) {
+          setUnreadMap(res.data.unreadMapping);
+        }
+      } catch (err) {
+        console.error("Error fetching unread status:", err);
+      }
+    };
+
+    if (currentUser?._id) {
+      fetchUnreadStatus();
+    }
   }, [currentUser]);
 
   useEffect(() => {
