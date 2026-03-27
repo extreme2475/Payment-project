@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import api from "../api";
-// Importing icons for a premium look
+// --- Added Socket Import (Ensure this matches your socket setup) ---
+// If you have a central socket file, use: import { socket } from "../socket";
+// For this example, I'm assuming 'socket' is available via props or window
 import { 
   FaCalendarAlt, 
   FaUser, 
@@ -13,7 +15,7 @@ import {
   FaTimesCircle 
 } from "react-icons/fa";
 
-const SchedulePaymentForm = () => {
+const SchedulePaymentForm = ({ socket }) => { // 👈 Accepting socket as a prop
   const [payments, setPayments] = useState([{ receiverPhone: "", amount: "", scheduledAt: "" }]);
   const [walletPin, setWalletPin] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,12 +25,10 @@ const SchedulePaymentForm = () => {
   // Helper to prevent selecting past dates and times
   const getMinDateTime = () => {
     const now = new Date();
-    // Adjust for local timezone offset to get YYYY-MM-DDTHH:mm format
     const offset = now.getTimezoneOffset() * 60000;
     return new Date(now - offset).toISOString().slice(0, 16);
   };
 
-  // --- Logic kept exactly as provided ---
   const fetchUser = async () => {
     const res = await api.get("/users/me");
     setUserId(res.data.user._id);
@@ -56,7 +56,19 @@ const SchedulePaymentForm = () => {
   useEffect(() => {
     fetchUser();
     fetchHistory();
-  }, []);
+
+    // ⚡ SOCKET LISTENER: Refresh history when backend worker finishes a payment
+    if (socket) {
+      socket.on("payment_processed", (data) => {
+        console.log("Real-time update:", data.message);
+        fetchHistory(); // Refresh the list automatically
+      });
+    }
+
+    return () => {
+      if (socket) socket.off("payment_processed");
+    };
+  }, [socket]); // Re-run if socket changes
 
   const handleChange = (index, field, value) => {
     const temp = [...payments];
@@ -71,7 +83,6 @@ const SchedulePaymentForm = () => {
     if (!walletPin) { alert("Enter wallet PIN"); return; }
     setLoading(true);
     try {
-      // FIX: Ensure dates are sent as proper ISO strings to prevent timezone shifts
       const formattedPayments = payments.map(p => ({
         ...p,
         scheduledAt: new Date(p.scheduledAt).toISOString()
@@ -96,8 +107,6 @@ const SchedulePaymentForm = () => {
 
   return (
     <div className="max-w-3xl mx-auto mt-10 px-4 space-y-8 pb-10">
-      
-      {/* --- FORM SECTION --- */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
         <div className="bg-indigo-600 p-6">
           <h2 className="text-white text-xl font-bold flex items-center gap-2">
@@ -144,7 +153,7 @@ const SchedulePaymentForm = () => {
                   <label className="text-xs font-semibold text-gray-500 mb-1 block">Schedule Date & Time</label>
                   <input 
                     type="datetime-local" 
-                    min={getMinDateTime()} // FIX: Prevents selecting past dates
+                    min={getMinDateTime()} 
                     value={p.scheduledAt} 
                     onChange={(e) => handleChange(i, "scheduledAt", e.target.value)} 
                     className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white" 
@@ -186,7 +195,6 @@ const SchedulePaymentForm = () => {
         </form>
       </div>
 
-      {/* --- HISTORY SECTION --- */}
       <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100">
         <h3 className="text-lg font-bold mb-6 text-gray-800 flex items-center gap-2">
           <FaClock className="text-indigo-500" /> Transaction Records
@@ -200,7 +208,7 @@ const SchedulePaymentForm = () => {
             </div>
           ) : (
             history.map((tx) => (
-              <div key={tx._id} className="p-4 border rounded-xl bg-gray-50 flex justify-between items-center hover:shadow-md transition-shadow bg-white">
+              <div key={tx._id} className="p-4 border rounded-xl flex justify-between items-center hover:shadow-md transition-shadow bg-white">
                 <div className="flex items-center gap-4">
                   <div className={`p-3 rounded-full ${
                     tx.status === 'Success' ? 'bg-green-100 text-green-600' : 

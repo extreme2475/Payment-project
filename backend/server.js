@@ -13,7 +13,7 @@ import loanRoutes from "./routes/loan.js";
 import emiRoutes from "./routes/emi.js";   
 import creditRoutes from "./routes/credit.js";
 import "./controller/emiService.js";
-import "./controller/scheduledWorker.js";
+import  {initScheduledWorker} from "./controller/scheduledWorker.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import loanDashboardRoutes from "./routes/loanDashboard.js";
 import schedulePaymentRoutes from "./routes/schedule.js";
@@ -42,6 +42,7 @@ app.use(cors({
 app.use(express.json());
 
 let onlineUsers = new Map(); 
+initScheduledWorker(io, onlineUsers);
 
 io.on("connection", (socket) => {
   console.log("⚡ New Connection:", socket.id);

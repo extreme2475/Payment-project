@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { io } from "socket.io-client"; // 1. Import Socket.io client
 
 import Sidebar from "./components/Sidebar/Sidebar.jsx";
-import Navbar from "./components/Navabar/Navbar.jsx"; // Navbar Import kiya
+import Navbar from "./components/Navabar/Navbar.jsx"; 
 import Login from "./Pages/login.jsx";
 import Register from "./Pages/Register.jsx";
 import PaymentForm from "./Pages/Payment.jsx";
@@ -48,6 +49,13 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// 2. Initialize Socket connection outside the component or in a useMemo
+// Replace with your actual backend URL
+const socket = io("https://your-backend-api-url.com", {
+  transports: ["websocket"],
+  withCredentials: true,
+});
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")));
@@ -61,13 +69,18 @@ function App() {
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
     setIsAuthenticated(!!token);
-    if (storedUser) setUser(JSON.parse(storedUser));
+    
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      // 3. Register user with socket for private notifications (like payments)
+      socket.emit("register_user", parsedUser._id);
+    }
   }, [location]);
 
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
       
-      {/* 1. Sidebar: Only for Desktop (md and up) */}
       {isAuthenticated && !isAuthPage && (
         <Sidebar
           collapsed={sidebarCollapsed}
@@ -75,16 +88,13 @@ function App() {
         />
       )}
 
-      {/* Main Content Wrapper */}
       <div className={`flex-1 flex flex-col min-w-0 h-full overflow-y-auto transition-all duration-500 
         ${isAuthenticated && !isAuthPage ? (sidebarCollapsed ? "md:ml-24" : "md:ml-72") : "ml-0"}`}>
         
-        {/* 2. Navbar: Mobile pe dikhega (md:hidden) and baki pages pe (except login/register) */}
         {isAuthenticated && !isAuthPage && (
           <Navbar />
         )}
 
-        {/* 3. Main content padding adjustment */}
         <main className={`
           ${isAuthenticated && !isAuthPage ? "p-4 md:p-8 pt-24 md:pt-8" : "p-0"}
         `}>
@@ -110,8 +120,24 @@ function App() {
               <Route path="/loans" element={<ProtectedRoute><PageWrapper><LoanRequestForm /></PageWrapper></ProtectedRoute>} />
               <Route path="/loansdash" element={<ProtectedRoute><PageWrapper><LoanDashboard /></PageWrapper></ProtectedRoute>} />
               <Route path="/credit" element={<ProtectedRoute><PageWrapper><CreditScorePage /></PageWrapper></ProtectedRoute>} />
-              <Route path="/time" element={<ProtectedRoute><PageWrapper><SchedulePaymentForm /></PageWrapper></ProtectedRoute>} />
-              <Route path="/chat" element={<ProtectedRoute><PageWrapper><ChatPage currentUser={user} /></PageWrapper></ProtectedRoute>} />
+              
+              {/* 4. Pass the socket instance to SchedulePaymentForm */}
+              <Route path="/time" element={
+                <ProtectedRoute>
+                  <PageWrapper>
+                    <SchedulePaymentForm socket={socket} />
+                  </PageWrapper>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/chat" element={
+                <ProtectedRoute>
+                  <PageWrapper>
+                    <ChatPage currentUser={user} socket={socket} />
+                  </PageWrapper>
+                </ProtectedRoute>
+              } />
+
               <Route path="/payments" element={<ProtectedRoute><PageWrapper><Transactions /></PageWrapper></ProtectedRoute>} />
               <Route path="/help" element={<ProtectedRoute><PageWrapper><Help /></PageWrapper></ProtectedRoute>} />
 
