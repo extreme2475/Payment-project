@@ -51,8 +51,9 @@ const ProtectedRoute = ({ children }) => {
 
 // 2. Initialize Socket connection outside the component or in a useMemo
 // Replace with your actual backend URL
-const socket = io("https://your-backend-api-url.com", {
-  transports: ["websocket"],
+// Change this line in your App.js
+const socket = io("https://payment-project-sigma-backend.onrender.com", { // Replace with your ACTUAL backend URL
+  transports: ["websocket", "polling"],
   withCredentials: true,
 });
 
