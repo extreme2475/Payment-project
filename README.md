@@ -1,12 +1,37 @@
-# React + Vite
+# Nexa Payment & P2P Lending Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack MERN application providing a secure digital wallet, peer-to-peer (P2P) lending marketplace, and real-time social features.
 
-Currently, two official plugins are available:
+## 🚀 Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 1. Internal Digital Wallet
+* **DB-to-DB Transfers:** Secure money transfers handled directly via database logic and Mongoose transactions.
+* **Atomic Integrity:** Uses MongoDB sessions to ensure that money is never lost during a transfer—either both accounts update, or neither does.
+* **Transaction Limits:** Built-in controls for minimum (10) and maximum (5,000) transfer amounts.
+* **Wallet Security:** A secondary Wallet PIN system with failed attempt tracking and account blocking.
 
-## Expanding the ESLint configuration
+### 2. P2P Lending & EMI Engine
+* **Marketplace:** Borrowers can request loans and lenders can fund them through an internal offer system.
+* **Sequential EMIs:** A strict repayment engine that ensures EMIs are paid in the correct chronological order.
+* **Credit Scoring:** An automated scoring system that rewards on-time repayments and loan settlements.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 3. Authentication & Real-Time Features
+* **Terminal-Based OTP:** OTPs for registration and verification are generated and displayed in the server terminal for simplified development.
+* **Live Chat:** Real-time messaging between users powered by Socket.io, featuring message status tracking.
+* **Scheduled Tasks:** Integrated background workers for processing recurring payments or reminders.
+
+## 🛠️ Tech Stack
+
+**Frontend:**
+* React 19, Vite, Tailwind CSS, Framer Motion, Recharts, Three.js.
+
+**Backend:**
+* Node.js, Express 5, Socket.io, MongoDB (Mongoose).
+
+## ⚙️ Setup & Development
+
+1. **Clone & Install:**
+   ```bash
+   git clone [https://github.com/extreme2475/payment-project.git](https://github.com/extreme2475/payment-project.git)
+   npm install
+   cd backend && npm install
