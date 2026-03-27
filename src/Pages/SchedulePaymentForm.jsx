@@ -20,6 +20,14 @@ const SchedulePaymentForm = () => {
   const [userId, setUserId] = useState("");
   const [history, setHistory] = useState([]);
 
+  // Helper to prevent selecting past dates and times
+  const getMinDateTime = () => {
+    const now = new Date();
+    // Adjust for local timezone offset to get YYYY-MM-DDTHH:mm format
+    const offset = now.getTimezoneOffset() * 60000;
+    return new Date(now - offset).toISOString().slice(0, 16);
+  };
+
   // --- Logic kept exactly as provided ---
   const fetchUser = async () => {
     const res = await api.get("/users/me");
@@ -63,7 +71,18 @@ const SchedulePaymentForm = () => {
     if (!walletPin) { alert("Enter wallet PIN"); return; }
     setLoading(true);
     try {
-      const res = await api.post("/schedule/schedule", { senderId: userId, payments, walletPin });
+      // FIX: Ensure dates are sent as proper ISO strings to prevent timezone shifts
+      const formattedPayments = payments.map(p => ({
+        ...p,
+        scheduledAt: new Date(p.scheduledAt).toISOString()
+      }));
+
+      const res = await api.post("/schedule", { 
+        senderId: userId, 
+        payments: formattedPayments, 
+        walletPin 
+      });
+      
       alert(res.data.message);
       setPayments([{ receiverPhone: "", amount: "", scheduledAt: "" }]);
       setWalletPin("");
@@ -125,6 +144,7 @@ const SchedulePaymentForm = () => {
                   <label className="text-xs font-semibold text-gray-500 mb-1 block">Schedule Date & Time</label>
                   <input 
                     type="datetime-local" 
+                    min={getMinDateTime()} // FIX: Prevents selecting past dates
                     value={p.scheduledAt} 
                     onChange={(e) => handleChange(i, "scheduledAt", e.target.value)} 
                     className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white" 

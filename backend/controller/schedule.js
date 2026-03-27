@@ -43,6 +43,13 @@ export const schedulePayment = async (req, res) => {
         await session.abortTransaction();
         return res.status(400).json({ success: false, message: "Invalid schedule date" });
       }
+      if (runAt < new Date(Date.now() - 60000)) {
+  await session.abortTransaction();
+  return res.status(400).json({ 
+    success: false, 
+    message: "Cannot schedule payments in the past" 
+  });
+}
 
       const receiver = await User.findOne({ phone: receiverPhone }).session(session);
       if (!receiver) {
