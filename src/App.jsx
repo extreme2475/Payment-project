@@ -52,9 +52,13 @@ const ProtectedRoute = ({ children }) => {
 // 2. Initialize Socket connection outside the component or in a useMemo
 // Replace with your actual backend URL
 // Change this line in your App.js
-const socket = io("https://payment-project-sigma-backend.onrender.com", { // Replace with your ACTUAL backend URL
-  transports: ["websocket", "polling"],
+// App.jsx - Line 53
+const socket = io("https://payment-project-sigma-backend.onrender.com", {
+  transports: ["websocket", "polling"], // Allow fallback to polling if websocket fails
   withCredentials: true,
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
 });
 
 function App() {
@@ -67,17 +71,26 @@ function App() {
   const isAuthPage = authPaths.includes(location.pathname);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-    setIsAuthenticated(!!token);
-    
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      // 3. Register user with socket for private notifications (like payments)
+  const token = localStorage.getItem("token");
+  const storedUser = localStorage.getItem("user");
+  setIsAuthenticated(!!token);
+  
+  if (storedUser) {
+    const parsedUser = JSON.parse(storedUser);
+    setUser(parsedUser);
+
+    // ⚡ Ensure socket is connected before emitting
+    socket.on("connect", () => {
+      console.log("Connected to Socket Server:", socket.id);
+      socket.emit("register_user", parsedUser._id);
+    });
+
+    // If already connected, emit immediately
+    if (socket.connected) {
       socket.emit("register_user", parsedUser._id);
     }
-  }, [location]);
+  }
+}, [location]);
 
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
