@@ -77,7 +77,7 @@ const SchedulePaymentForm = () => {
         scheduledAt: new Date(p.scheduledAt).toISOString()
       }));
 
-      const res = await api.post("/schedule", { 
+      const res = await api.post("/schedule/schedule", { 
         senderId: userId, 
         payments: formattedPayments, 
         walletPin 
