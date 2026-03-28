@@ -10,124 +10,140 @@ import crypto from "crypto";
 
 // ---------------- Pay EMI manually ----------------
 export const payEMI = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const { emiId, installmentIndex, walletPin } = req.body;
 
   try {
-    const { emiId, installmentIndex, walletPin } = req.body;
+    // 1. SECURITY: Validate PIN before starting a database session
+    // This prevents "Locking" the database if the user just typed the wrong PIN.
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    // 1. Fetch EMI and lock it in this session
-    const emi = await EMI.findById(emiId).session(session);
-    if (!emi) throw new Error("EMI record not found");
-    if (emi.status === "Completed") throw new Error("Loan already fully settled");
-
-    // 2. STRICT ORDER CHECK: Kya user pichli EMI bhul toh nahi raha?
-    const firstUnpaidIndex = emi.emiSchedule.findIndex(inst => !inst.paid);
-    if (installmentIndex !== firstUnpaidIndex) {
-      throw new Error(`Invalid payment order. Please pay EMI #${firstUnpaidIndex + 1} first.`);
+    const isPinValid = await bcrypt.compare(walletPin, user.walletPin);
+    if (!isPinValid) {
+      return res.status(401).json({ success: false, message: "Invalid wallet PIN" });
     }
 
-    const installment = emi.emiSchedule[installmentIndex];
-    if (installment.paid) throw new Error("This EMI is already paid");
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // 3. ATOMIC BALANCE CHECK & UPDATE (Race condition fix)
-    const borrower = await User.findOneAndUpdate(
-      { _id: req.user.id, walletBalance: { $gte: installment.amount } },
-      { $inc: { walletBalance: -installment.amount } },
-      { session, new: true }
-    );
+    try {
+      // 2. Fetch EMI and lock it in this session
+      const emi = await EMI.findById(emiId).session(session);
+      if (!emi) throw new Error("EMI record not found");
+      if (emi.status === "Completed") throw new Error("Loan already fully settled");
 
-    if (!borrower) throw new Error("Insufficient balance or payment failed");
+      // 3. STRICT ORDER CHECK: Ensure user isn't skipping a previous month
+      const firstUnpaidIndex = emi.emiSchedule.findIndex(inst => !inst.paid);
+      if (installmentIndex !== firstUnpaidIndex) {
+        throw new Error(`Invalid payment order. Please pay EMI #${firstUnpaidIndex + 1} first.`);
+      }
 
-    // PIN check
-    const isPinValid = await bcrypt.compare(walletPin, borrower.walletPin);
-    if (!isPinValid) throw new Error("Invalid wallet PIN");
+      const installment = emi.emiSchedule[installmentIndex];
+      if (installment.paid) throw new Error("This EMI is already paid");
 
-    const lender = await User.findByIdAndUpdate(
-      emi.lender,
-      { $inc: { walletBalance: installment.amount } },
-      { session, new: true }
-    );
-    if (!lender) throw new Error("Lender account not found");
+      // 4. FINANCIAL CALCULATION: Include Penalties (if any exist from Cron Job)
+      const totalToPay = installment.amount + (installment.penalty || 0);
 
-    // 4. Update EMI Object
-    installment.paid = true;
-    installment.paidAt = new Date();
-    emi.paidEMIs += 1;
+      // 5. ATOMIC BALANCE CHECK & UPDATE (The "Shield" against double-spending)
+      const borrower = await User.findOneAndUpdate(
+        { _id: req.user.id, walletBalance: { $gte: totalToPay } },
+        { $inc: { walletBalance: -totalToPay } },
+        { session, new: true }
+      );
 
-    const isLoanFullyPaid = emi.paidEMIs === emi.totalEMIs;
-    emi.status = isLoanFullyPaid ? "Completed" : "Ongoing";
-    const nextUnpaid = emi.emiSchedule.find(inst => !inst.paid);
+      if (!borrower) throw new Error("Insufficient balance to cover EMI and Penalties");
 
-    // --- CREDIT SCORE INTEGRATION START ---
-    // 1. Update score for On-Time payment (+10)
-    await updateScore(req.user.id, 10, session);
+      const lender = await User.findByIdAndUpdate(
+        emi.lender,
+        { $inc: { walletBalance: totalToPay } },
+        { session, new: true }
+      );
+      if (!lender) throw new Error("Lender account not found");
 
-    // 2. Bonus impact if the loan is fully settled (+50)
-    if (isLoanFullyPaid) {
-      await updateScore(req.user.id, 50, session);
+      // 6. Update EMI Schedule Data
+      installment.paid = true;
+      installment.paidAt = new Date();
+      emi.paidEMIs += 1;
+
+      const isLoanFullyPaid = emi.paidEMIs === emi.totalEMIs;
+      emi.status = isLoanFullyPaid ? "Completed" : "Ongoing";
+      const nextUnpaid = emi.emiSchedule.find(inst => !inst.paid);
+
+      // 7. CREDIT SCORE INTEGRATION
+      // On-time/Manual payment reward
+      await updateScore(req.user.id, 10, session);
+
+      // Final settlement bonus
+      if (isLoanFullyPaid) {
+        await updateScore(req.user.id, 50, session);
+      }
+
+      // 8. Secure Ledger & Transaction Records
+      const txUuid = crypto.randomUUID();
+
+      await Transaction.create([{
+        sender: borrower._id,
+        senderType: "USER",
+        receiver: lender._id,
+        receiverPhone: lender.phone,
+        amount: totalToPay, 
+        balanceBeforeSender: borrower.walletBalance + totalToPay,
+        balanceAfterSender: borrower.walletBalance,
+        balanceBeforeReceiver: lender.walletBalance - totalToPay,
+        balanceAfterReceiver: lender.walletBalance,
+        status: "Success",
+        method: "Wallet",
+        note: `EMI Payment #${installmentIndex + 1}${installment.penalty > 0 ? ' (incl. Penalty)' : ''}`,
+        loanId: emi.loan,
+      }], { session });
+
+      await Ledger.create([{
+        txId: `EMI-${txUuid}`,
+        type: "TRANSFER",
+        from: borrower.phone,
+        to: lender.phone,
+        amount: totalToPay,
+        note: `Manual EMI payment #${installmentIndex + 1}`,
+      }], { session });
+
+      // 9. Update Loan Master Record
+      await Loan.findByIdAndUpdate(
+        emi.loan,
+        {
+          $set: {
+            emiPaid: emi.paidEMIs,
+            status: isLoanFullyPaid ? "Completed" : "Active",
+            nextEmiDate: isLoanFullyPaid ? null : (nextUnpaid ? nextUnpaid.dueDate : null)
+          }
+        },
+        { session }
+      );
+
+      // Save the EMI document changes
+      await emi.save({ session });
+
+      // Commit all changes at once
+      await session.commitTransaction();
+
+      res.status(200).json({
+        success: true,
+        message: isLoanFullyPaid ? "Loan fully settled! ✅" : "EMI paid successfully 💸",
+        nextDueDate: isLoanFullyPaid ? null : (nextUnpaid ? nextUnpaid.dueDate : null)
+      });
+    } catch (err) {
+      // If anything fails inside the session, roll back all money/status changes
+      await session.abortTransaction();
+      throw err; 
+    } finally {
+      session.endSession();
     }
-    // --- CREDIT SCORE INTEGRATION END ---
-
-    // 5. Secure Ledger & Transaction Records
-    const txUuid = crypto.randomUUID();
-
-    await Transaction.create([{
-      sender: borrower._id,
-      senderType: "USER",
-      receiver: lender._id,
-      receiverPhone: lender.phone,
-      amount: installment.amount,
-      balanceBeforeSender: borrower.walletBalance + installment.amount,
-      balanceAfterSender: borrower.walletBalance,
-      balanceBeforeReceiver: lender.walletBalance - installment.amount,
-      balanceAfterReceiver: lender.walletBalance,
-      status: "Success",
-      method: "Wallet",
-      note: `EMI Payment #${installmentIndex + 1}`,
-      loanId: emi.loan,
-    }], { session });
-
-    await Ledger.create([{
-      txId: `EMI-${txUuid}`,
-      type: "TRANSFER",
-      from: borrower.phone,
-      to: lender.phone,
-      amount: installment.amount,
-      note: `Manual EMI payment #${installmentIndex + 1}`,
-    }], { session });
-
-    // 6. Update Loan status
-    await Loan.findByIdAndUpdate(
-      emi.loan,
-      {
-        $set: {
-          emiPaid: emi.paidEMIs,
-          status: isLoanFullyPaid ? "Completed" : "Active",
-          nextEmiDate: isLoanFullyPaid ? null : (nextUnpaid ? nextUnpaid.dueDate : null)
-        }
-      },
-      { session }
-    );
-
-    await emi.save({ session });
-
-    await session.commitTransaction();
-    res.status(200).json({
-      success: true,
-      message: isLoanFullyPaid ? "Loan fully settled! ✅" : "EMI paid successfully 💸",
-      nextDueDate: isLoanFullyPaid ? null : (nextUnpaid ? nextUnpaid.dueDate : null)
-    });
   } catch (err) {
-    await session.abortTransaction();
     console.error("EMI Payment Error:", err.message);
     res.status(400).json({ success: false, message: err.message });
-  } finally {
-    session.endSession();
   }
 };
 
-// ---------------- EMI History ----------------
+// ---------------- Get EMI History ----------------
 export const getEMIHistory = async (req, res) => {
   try {
     const userId = req.params.userId;

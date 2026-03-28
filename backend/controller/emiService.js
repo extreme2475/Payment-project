@@ -9,6 +9,9 @@ import mongoose from "mongoose";
 // Cron: runs daily at 1AM
 cron.schedule("0 1 * * *", async () => {
   const today = new Date();
+  // Normalize today to start of day for accurate comparison
+  const todayStart = new Date(today).setHours(0,0,0,0);
+
   try {
     const emis = await EMI.find({ status: "Ongoing" });
     for (const emi of emis) {
@@ -26,13 +29,21 @@ cron.schedule("0 1 * * *", async () => {
           continue;
         }
 
-        // Next unpaid installment
-        const nextIndex = emiDoc.emiSchedule.findIndex(i => !i.paid && i.dueDate <= today);
-        if (nextIndex === -1) { await session.abortTransaction(); session.endSession(); continue; }
+        // FIX 1: Normalize installment dueDate for comparison
+        const nextIndex = emiDoc.emiSchedule.findIndex(i => {
+          const dDate = new Date(i.dueDate).setHours(0,0,0,0);
+          return !i.paid && dDate <= todayStart;
+        });
+
+        if (nextIndex === -1) { 
+          await session.abortTransaction(); 
+          session.endSession(); 
+          continue; 
+        }
 
         const installment = emiDoc.emiSchedule[nextIndex];
 
-        // AutoEMI deduction
+        // AutoEMI deduction logic
         if (emiDoc.autoEMI && borrower.walletBalance >= installment.amount) {
           borrower.walletBalance -= installment.amount;
           lender.walletBalance += installment.amount;
@@ -68,8 +79,15 @@ cron.schedule("0 1 * * *", async () => {
 
         // Penalty if unpaid
         if (!installment.paid) {
-          const daysLate = Math.floor((today - installment.dueDate) / (1000*60*60*24));
-          if (daysLate > 0) installment.penalty = parseFloat((installment.amount * 0.01 * daysLate).toFixed(2));
+          // FIX 2: Accurate days late calculation using normalized dates
+          const dueDateNormalized = new Date(installment.dueDate).setHours(0,0,0,0);
+          const daysLate = Math.floor((todayStart - dueDateNormalized) / (1000*60*60*24));
+          
+          if (daysLate > 0) {
+            installment.penalty = parseFloat((installment.amount * 0.01 * daysLate).toFixed(2));
+            // FIX 3: Tell Mongoose that the emiSchedule array has changed so it saves the penalty
+            emiDoc.markModified('emiSchedule'); 
+          }
         }
 
         const nextUnpaid = emiDoc.emiSchedule.find(i => !i.paid);
