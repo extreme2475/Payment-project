@@ -35,10 +35,13 @@ const Register = () => {
       const normalizedPhone = formData.phone.replace(/\D/g, "");
       const res = await axios.post(
         "https://payment-project-p4z6.onrender.com/api/users/send-otp",
-        { phone: normalizedPhone }
+        { 
+          phone: normalizedPhone ,
+          email: formData.email
+        }
       );
       setOtpSent(true);
-      setMessage("📩 OTP sent to your phone");
+      setMessage("📩 OTP sent to your email");
     } catch (err) {
       setMessage(err.response?.data?.message || "Failed to send OTP");
     }

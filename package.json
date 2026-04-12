@@ -17,6 +17,7 @@
     "firebase": "^12.4.0",
     "framer-motion": "^12.24.12",
     "lucide-react": "^0.562.0",
+    "nodemailer": "^8.0.5",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-icons": "^5.5.0",
