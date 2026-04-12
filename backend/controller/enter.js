@@ -15,11 +15,22 @@ const generateOTP = () =>
 
 // --- Nodemailer Setup ---
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // Use SSL for port 465
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
-  }
+  },
+  tls: {
+    // This is crucial for cloud servers like Render
+    rejectUnauthorized: false,
+    servername: "smtp.gmail.com"
+  },
+  // We give it 30 seconds to breathe because Render can be slow
+  connectionTimeout: 30000, 
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
 });
 
 // ------------------- REGISTER USER -------------------
