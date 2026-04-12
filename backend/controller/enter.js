@@ -3,7 +3,7 @@ import DemoTransaction from "../models/transaction.js";
 import Ledger from "../models/ledger.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer"; // Added
+import { Resend } from 'resend'; // Switched from nodemailer to Resend SDK
 
 // In-memory OTP storage
 export const otpStore = new Map();
@@ -13,17 +13,9 @@ export const verifiedPhones = new Set();
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
-// --- Nodemailer Setup ---
-const transporter = nodemailer.createTransport({
-  host: "smtp.resend.com",
-  
-  port: 587,
-  secure:false,
-  auth: {
-    user: "resend", // This stays exactly as the word "resend"
-    pass: process.env.EMAIL_PASS, // Your Resend Key from Render
-  },
-});
+// --- Resend Setup (Replaces Nodemailer) ---
+// This uses HTTPS (Port 443), which Render does NOT block.
+const resend = new Resend(process.env.EMAIL_PASS); 
 
 // ------------------- REGISTER USER -------------------
 export const registerUser = async (req, res) => {
@@ -147,7 +139,7 @@ export const loginUser = async (req, res) => {
 // ------------------- SEND OTP -------------------
 export const sendOtp = async (req, res) => {
   try {
-    const { phone, email } = req.body; // Now expecting email too
+    const { phone, email } = req.body;
     if (!phone || !email) return res.status(400).json({ message: "Phone and Email are required" });
 
     const normalizedPhone = phone.replace(/\D/g, "");
@@ -156,19 +148,22 @@ export const sendOtp = async (req, res) => {
 
     otpStore.set(normalizedPhone, { otp, expiresAt });
 
-    // Send OTP via Email
-   const mailOptions = {
-  from: "onboarding@resend.dev", // You MUST use this exact address
-  to: email, // This is the user's email
-  subject: "Your OTP Verification Code",
-  text: `Your OTP for phone verification is: ${otp}. It will expire in 3 minutes.`,
-};
+    // Send OTP via Resend API
+    const { data, error } = await resend.emails.send({
+      from: "onboarding@resend.dev", // Verified sender for Resend free tier
+      to: email,
+      subject: "Your OTP Verification Code",
+      html: `<strong>Your OTP for NexaPay is: ${otp}</strong><p>It will expire in 3 minutes.</p>`,
+    });
 
-    await transporter.sendMail(mailOptions);
+    if (error) {
+      console.error("Resend API Error:", error);
+      return res.status(500).json({ message: "Failed to deliver email via API" });
+    }
 
-    console.log(`✅ OTP for ${normalizedPhone} sent to ${email}: ${otp}`);
-
+    console.log(`✅ OTP for ${normalizedPhone} sent to ${email} via API: ${otp}`);
     res.status(200).json({ message: "OTP sent to your email successfully" });
+
   } catch (error) {
     console.error("Error sending OTP:", error);
     res.status(500).json({ message: "Failed to send OTP" });
