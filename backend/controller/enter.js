@@ -16,8 +16,9 @@ const generateOTP = () =>
 // --- Nodemailer Setup ---
 const transporter = nodemailer.createTransport({
   host: "smtp.resend.com",
-  secure: true,
-  port: 465,
+  
+  port: 587,
+  secure:false,
   auth: {
     user: "resend", // This stays exactly as the word "resend"
     pass: process.env.EMAIL_PASS, // Your Resend Key from Render
