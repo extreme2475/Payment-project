@@ -15,22 +15,13 @@ const generateOTP = () =>
 
 // --- Nodemailer Setup ---
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
+  host: "smtp.resend.com",
+  secure: true,
   port: 465,
-  secure: true, // Use SSL for port 465
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: "resend", // This stays exactly as the word "resend"
+    pass: process.env.EMAIL_PASS, // Your Resend Key from Render
   },
-  tls: {
-    // This is crucial for cloud servers like Render
-    rejectUnauthorized: false,
-    servername: "smtp.gmail.com"
-  },
-  // We give it 30 seconds to breathe because Render can be slow
-  connectionTimeout: 30000, 
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
 });
 
 // ------------------- REGISTER USER -------------------
@@ -165,12 +156,12 @@ export const sendOtp = async (req, res) => {
     otpStore.set(normalizedPhone, { otp, expiresAt });
 
     // Send OTP via Email
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Your OTP Verification Code",
-      text: `Your OTP for phone verification is: ${otp}. It will expire in 3 minutes.`,
-    };
+   const mailOptions = {
+  from: "onboarding@resend.dev", // You MUST use this exact address
+  to: email, // This is the user's email
+  subject: "Your OTP Verification Code",
+  text: `Your OTP for phone verification is: ${otp}. It will expire in 3 minutes.`,
+};
 
     await transporter.sendMail(mailOptions);
 
