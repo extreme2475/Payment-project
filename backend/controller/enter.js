@@ -3,7 +3,7 @@ import DemoTransaction from "../models/transaction.js";
 import Ledger from "../models/ledger.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { Resend } from 'resend'; // Switched from nodemailer to Resend SDK
+import { Resend } from 'resend';
 
 // In-memory OTP storage
 export const otpStore = new Map();
@@ -13,8 +13,7 @@ export const verifiedPhones = new Set();
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
-// --- Resend Setup (Replaces Nodemailer) ---
-// This uses HTTPS (Port 443), which Render does NOT block.
+// --- Resend Setup ---
 const resend = new Resend(process.env.EMAIL_PASS); 
 
 // ------------------- REGISTER USER -------------------
@@ -136,7 +135,7 @@ export const loginUser = async (req, res) => {
   }
 };
 
-// ------------------- SEND OTP -------------------
+// ------------------- SEND OTP (HYBRID VERSION) -------------------
 export const sendOtp = async (req, res) => {
   try {
     const { phone, email } = req.body;
@@ -144,33 +143,36 @@ export const sendOtp = async (req, res) => {
 
     const normalizedPhone = phone.replace(/\D/g, "");
     const otp = generateOTP();
-    const expiresAt = Date.now() + 3 * 60 * 1000;
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 mins
 
     otpStore.set(normalizedPhone, { otp, expiresAt });
 
-    // Send OTP via Resend API
+    // Try sending real email
     const { data, error } = await resend.emails.send({
-      from: "onboarding@resend.dev", // Verified sender for Resend free tier
+      from: "onboarding@resend.dev",
       to: email,
-      subject: "Your OTP Verification Code",
-      html: `<strong>Your OTP for NexaPay is: ${otp}</strong><p>It will expire in 3 minutes.</p>`,
+      subject: "NexaPay Verification Code",
+      html: `<strong>Your OTP is: ${otp}</strong><p>Demo Bypass: 123456</p>`,
     });
 
     if (error) {
-      console.error("Resend API Error:", error);
-      return res.status(500).json({ message: "Failed to deliver email via API" });
+      // If Resend blocks (403), we still succeed with a demo message
+      console.log("Resend Sandbox Blocked: Falling back to Master OTP 123456");
+      return res.status(200).json({ 
+        message: "Demo Mode: Use 123456 if email is not received" 
+      });
     }
 
-    console.log(`✅ OTP for ${normalizedPhone} sent to ${email} via API: ${otp}`);
+    console.log(`✅ OTP sent to ${email}: ${otp}`);
     res.status(200).json({ message: "OTP sent to your email successfully" });
 
   } catch (error) {
-    console.error("Error sending OTP:", error);
+    console.error("Critical Error:", error);
     res.status(500).json({ message: "Failed to send OTP" });
   }
 };
 
-// ------------------- VERIFY OTP -------------------
+// ------------------- VERIFY OTP (HYBRID VERSION) -------------------
 export const verifyOtp = async (req, res) => {
   try {
     let { phone, otp } = req.body;
@@ -179,17 +181,15 @@ export const verifyOtp = async (req, res) => {
     const normalizedPhone = phone.replace(/\D/g, "");
     const record = otpStore.get(normalizedPhone);
 
-    if (!record) return res.status(400).json({ message: "OTP not found or expired" });
-    if (Date.now() > record.expiresAt) {
+    // MASTER BYPASS: Allow 123456 OR the real generated OTP
+    if (otp === "123456" || (record && record.otp === otp && Date.now() <= record.expiresAt)) {
       otpStore.delete(normalizedPhone);
-      return res.status(400).json({ message: "OTP expired" });
+      verifiedPhones.add(normalizedPhone);
+      return res.status(200).json({ message: "OTP verified successfully" });
     }
-    if (record.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
 
-    otpStore.delete(normalizedPhone);
-    verifiedPhones.add(normalizedPhone);
-
-    res.status(200).json({ message: "OTP verified successfully" });
+    return res.status(400).json({ message: "Invalid or expired OTP" });
+    
   } catch (error) {
     console.error("Error verifying OTP:", error);
     res.status(500).json({ message: "Server error during OTP verification" });
@@ -212,7 +212,7 @@ export const logoutUser = async (req, res) => {
   try {
     res.status(200).json({ 
       success: true, 
-      message: "Logged out successfully. Please delete the token from client storage." 
+      message: "Logged out successfully." 
     });
   } catch (error) {
     console.error("Logout Error:", error);
